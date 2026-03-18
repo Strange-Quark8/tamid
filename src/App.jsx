@@ -66,7 +66,8 @@ function getDailyQuote() { const d = Math.floor((Date.now() - new Date(new Date(
 // ═══════════════════════════════════════════════
 const CHARITIES = [
   { id: "colel", name: "Colel Chabad", category: "Elderly & Families", desc: "Israel's oldest charity — soup kitchens, elderly care, widows & orphans", venmo: "ColelChabad", website: "https://colelchabad.org/donate-2/", color: "#C8963E", region: "US / Israel" },
-  // TODO: Add JWB Singapore with PayLah link once available
+  { id: "chb", name: "Chabad House Bowery", category: "Community & Youth", desc: "Warm, soulful Judaism for young Jews downtown — learning, prayer & connection for college students and young professionals", venmo: "ChabadHouseBowery", website: null, color: "#2E5EA7", region: "NYC" },
+  // TODO: Add JWB Singapore with Stripe link once available
 ];
 const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
 
@@ -91,6 +92,39 @@ function scheduleMorningReminder() {
     }
     scheduleMorningReminder();
   }, next.getTime() - now.getTime());
+}
+
+// ═══════════════════════════════════════════════
+//  CHARITY PICKER MODAL
+// ═══════════════════════════════════════════════
+function CharityPicker({ current, onSelect, onClose }) {
+  return (
+    <div style={S.overlay} onClick={onClose}>
+      <div style={{ ...S.modal, maxWidth: 360 }} onClick={e => e.stopPropagation()}>
+        <div style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 22, fontWeight: 700, color: "#E8D5AA", marginBottom: 16 }}>
+          Choose Charity
+        </div>
+        {CHARITIES.map(c => (
+          <button key={c.id} onClick={() => { onSelect(c.id); onClose(); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 12, padding: "14px 16px", width: "100%",
+              background: current === c.id ? "rgba(200,150,62,.08)" : "transparent",
+              border: current === c.id ? `1.5px solid ${c.color}` : "1.5px solid rgba(200,150,62,.08)",
+              borderRadius: 12, cursor: "pointer", textAlign: "left", marginBottom: 8, transition: "all .15s",
+            }}>
+            <div style={{ width: 10, height: 10, borderRadius: "50%", background: c.color, flexShrink: 0 }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 15, fontWeight: 600, color: "#E8D5AA" }}>{c.name}</div>
+              <div style={{ fontSize: 11, color: "rgba(200,150,62,.4)", marginTop: 2 }}>
+                {c.category} · {c.region} · Venmo
+              </div>
+            </div>
+            {current === c.id && <span style={{ color: c.color, fontSize: 16 }}>✓</span>}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 // ═══════════════════════════════════════════════
@@ -140,6 +174,7 @@ export default function TamidApp() {
   const [screen, setScreen] = useState("home");
   const [donatedToday, setDonatedToday] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [showCharityPicker, setShowCharityPicker] = useState(false);
   const [pending, setPending] = useState(null);
   const [animateCoin, setAnimateCoin] = useState(false);
   const [btnPressed, setBtnPressed] = useState(false);
@@ -324,13 +359,24 @@ export default function TamidApp() {
               ))}
             </div>
 
-            {/* Charity card */}
-            <div style={{ background: "rgba(200,150,62,.04)", borderRadius: 12, padding: "16px 18px", border: "1px solid rgba(200,150,62,.1)", borderLeft: `3px solid ${charity.color}` }}>
-              <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1.2, color: charity.color, fontWeight: 600 }}>{charity.category}</div>
+            {/* Charity card — tap to switch */}
+            <button onClick={() => setShowCharityPicker(true)} style={{
+              display: "block", width: "100%", textAlign: "left", cursor: "pointer",
+              background: "rgba(200,150,62,.04)", borderRadius: 12, padding: "16px 18px",
+              border: "1px solid rgba(200,150,62,.1)", borderLeft: `3px solid ${charity.color}`,
+              transition: "all .2s",
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div style={{ fontSize: 11, textTransform: "uppercase", letterSpacing: 1.2, color: charity.color, fontWeight: 600 }}>{charity.category}</div>
+                <div style={{ fontSize: 10, color: "rgba(200,150,62,.3)", display: "flex", alignItems: "center", gap: 4 }}>
+                  Tap to switch
+                  <svg viewBox="0 0 16 16" width="12" height="12" fill="none" stroke="rgba(200,150,62,.3)" strokeWidth="2"><path d="M6 4l4 4-4 4" /></svg>
+                </div>
+              </div>
               <div style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 22, fontWeight: 700, marginTop: 4 }}>{charity.name}</div>
               <div style={{ fontSize: 13, color: "rgba(200,150,62,.5)", marginTop: 4, lineHeight: 1.5 }}>{charity.desc}</div>
               <div style={{ fontSize: 11, color: "#5BA8D4", marginTop: 6 }}>Venmo: @{charity.venmo}</div>
-            </div>
+            </button>
 
             {/* Amount selector */}
             <div style={{ marginTop: 20 }}>
@@ -454,6 +500,9 @@ export default function TamidApp() {
           </div>
         )}
       </div>
+
+      {/* Charity picker modal */}
+      {showCharityPicker && <CharityPicker current={profile.selectedCharity} onSelect={id => saveProfile({ ...profile, selectedCharity: id })} onClose={() => setShowCharityPicker(false)} />}
 
       {/* Confirm modal */}
       {showConfirm && (
