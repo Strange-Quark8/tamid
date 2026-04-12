@@ -190,12 +190,17 @@ export default function TamidApp() {
     const unsub = onAuthStateChanged(auth, async (u) => {
       setUser(u);
       if (u) {
-        const snap = await getDoc(doc(db, "users", u.uid));
-        if (snap.exists()) {
-          const data = snap.data();
-          setProfile(data.profile || null);
-          setDonations(data.donations || []);
-          setDonatedToday((data.donations || []).some(x => new Date(x.date).toDateString() === new Date().toDateString()));
+        try {
+          const snap = await getDoc(doc(db, "users", u.uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            setProfile(data.profile || null);
+            setDonations(data.donations || []);
+            setDonatedToday((data.donations || []).some(x => new Date(x.date).toDateString() === new Date().toDateString()));
+          }
+        } catch (e) {
+          console.error("Firestore read failed:", e);
+          // Don't block the app — user can still onboard fresh
         }
       } else {
         setProfile(null);
@@ -213,12 +218,23 @@ export default function TamidApp() {
   // ─── Firestore helpers ───
   const saveProfile = async (prof) => {
     setProfile(prof);
-    if (user) await setDoc(doc(db, "users", user.uid), { profile: prof }, { merge: true });
+    if (user) {
+      try { await setDoc(doc(db, "users", user.uid), { profile: prof }, { merge: true }); }
+      catch (e) { console.error("Failed to save profile:", e); }
+    }
   };
   const addDonation = async (don) => {
     setDonations(prev => [...prev, don]);
     setDonatedToday(true);
-    if (user) await updateDoc(doc(db, "users", user.uid), { donations: arrayUnion(don) });
+    if (user) {
+      try { await updateDoc(doc(db, "users", user.uid), { donations: arrayUnion(don) }); }
+      catch (e) {
+        console.error("Failed to save donation:", e);
+        // Try setDoc as fallback (in case doc doesn't exist yet)
+        try { await setDoc(doc(db, "users", user.uid), { donations: [don] }, { merge: true }); }
+        catch (e2) { console.error("Fallback save also failed:", e2); }
+      }
+    }
   };
 
   const signInWithGoogle = async () => { try { await signInWithPopup(auth, googleProvider); } catch (e) { console.error(e); } };
