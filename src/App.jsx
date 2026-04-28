@@ -258,7 +258,21 @@ export default function TamidApp() {
   const yearDonations = donations.filter(d => new Date(d.date).getFullYear() === thisYear);
   const yearTotal = yearDonations.reduce((s, d) => s + d.amount, 0);
   const totalAllTime = donations.reduce((s, d) => s + d.amount, 0);
-  const streak = (() => { let s = 0, d = new Date(); while (donations.some(x => new Date(x.date).toDateString() === d.toDateString())) { s++; d.setDate(d.getDate() - 1); } return s; })();
+  const isRestDay = (date) => {
+    if (date.getDay() === 6) return true; // Shabbat
+    const evts = HebrewCalendar.calendar({ start: date, end: date, sedrot: false, omer: false });
+    return evts.some(e => (e.getFlags() & flags.CHAG) !== 0);
+  };
+  const streak = (() => {
+    let s = 0, d = new Date(); d.setHours(0, 0, 0, 0);
+    for (let i = 0; i < 365; i++) {
+      const donated = donations.some(x => new Date(x.date).toDateString() === d.toDateString());
+      if (donated) { s++; }
+      else if (!isRestDay(d)) { break; }
+      d.setDate(d.getDate() - 1);
+    }
+    return s;
+  })();
   const charityBreakdown = yearDonations.reduce((a, d) => { a[d.charity] = (a[d.charity] || 0) + d.amount; return a; }, {});
   const monthlyData = Array.from({ length: 12 }, (_, i) => { const m = yearDonations.filter(d => new Date(d.date).getMonth() === i); return { mo: ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][i], tot: m.reduce((s, d) => s + d.amount, 0) }; });
   const curAmt = showCustom && customAmt ? parseFloat(customAmt) : (profile?.amount || 1);
