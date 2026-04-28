@@ -67,6 +67,7 @@ function getDailyQuote() { const d = Math.floor((Date.now() - new Date(new Date(
 const CHARITIES = [
   { id: "colel", name: "Colel Chabad", category: "Elderly & Families", desc: "Israel's oldest charity — soup kitchens, elderly care, widows & orphans", venmo: "ColelChabad", website: "https://colelchabad.org/donate-2/", color: "#C8963E", region: "US / Israel" },
   { id: "chb", name: "Chabad House Bowery", category: "Community & Youth", desc: "Warm, soulful Judaism for young Jews downtown — learning, prayer & connection for college students and young professionals", venmo: "ChabadHouseBowery", website: null, color: "#2E5EA7", region: "NYC" },
+  { id: "jwb", name: "Jewish Welfare Board", category: "Community & Welfare", desc: "Supporting the Jewish community of Singapore — welfare, education, and communal life", stripe: "https://donate.stripe.com/fZu4gy37paG7boj7bD2Fa00", website: "https://jwbs.org.sg", color: "#5BA8D4", region: "Singapore" },
   // TODO: Add JWB Singapore with Stripe link once available
 ];
 const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
@@ -116,7 +117,7 @@ function CharityPicker({ current, onSelect, onClose }) {
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 15, fontWeight: 600, color: "#E8D5AA" }}>{c.name}</div>
               <div style={{ fontSize: 11, color: "rgba(200,150,62,.4)", marginTop: 2 }}>
-                {c.category} · {c.region} · Venmo
+                {c.category} · {c.region} · {c.venmo ? "Venmo" : c.stripe ? "Stripe" : "Web"}
               </div>
             </div>
             {current === c.id && <span style={{ color: c.color, fontSize: 16 }}>✓</span>}
@@ -262,6 +263,8 @@ export default function TamidApp() {
     if (!curAmt || curAmt <= 0) return;
     const url = charity.venmo
       ? `https://venmo.com/${charity.venmo}?txn=pay&amount=${curAmt}&note=${encodeURIComponent("Daily Tzedakah - Tamid")}`
+      : charity.stripe
+      ? `${charity.stripe}?prefilled_amount=${Math.round(curAmt * 100)}`
       : charity.website;
     if (url) window.open(url, "_blank");
     setPending({ charity: charity.name, charityId: charity.id, amount: curAmt, date: new Date().toISOString() });
@@ -391,7 +394,9 @@ export default function TamidApp() {
               </div>
               <div style={{ fontFamily: "'Cormorant Garamond',Georgia,serif", fontSize: 22, fontWeight: 700, marginTop: 4 }}>{charity.name}</div>
               <div style={{ fontSize: 13, color: "rgba(200,150,62,.5)", marginTop: 4, lineHeight: 1.5 }}>{charity.desc}</div>
-              <div style={{ fontSize: 11, color: "#5BA8D4", marginTop: 6 }}>Venmo: @{charity.venmo}</div>
+              <div style={{ fontSize: 11, color: "#5BA8D4", marginTop: 6 }}>
+                {charity.venmo ? `Venmo: @${charity.venmo}` : charity.stripe ? "via Stripe" : ""}
+              </div>
             </button>
 
             {/* Amount selector */}
