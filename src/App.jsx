@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { auth, googleProvider, db } from "./firebase";
+import { auth, googleProvider, db, messaging } from "./firebase";
+import { getToken } from "firebase/messaging";
 import { signInWithPopup, onAuthStateChanged, signOut } from "firebase/auth";
 import { doc, getDoc, setDoc, updateDoc, arrayUnion } from "firebase/firestore";
 import { HDate, HebrewCalendar, flags } from "@hebcal/core";
@@ -75,24 +76,23 @@ const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
 // ═══════════════════════════════════════════════
 //  NOTIFICATIONS
 // ═══════════════════════════════════════════════
-async function requestNotificationPermission() {
-  if (!("Notification" in window)) return false;
-  if (Notification.permission === "granted") return true;
-  if (Notification.permission === "denied") return false;
-  return (await Notification.requestPermission()) === "granted";
-}
-
-function scheduleMorningReminder() {
-  const now = new Date();
-  const next = new Date(now); next.setDate(next.getDate() + 1); next.setHours(8, 0, 0, 0);
-  setTimeout(() => {
-    if (Notification.permission === "granted" && "serviceWorker" in navigator) {
-      navigator.serviceWorker.ready.then(reg => {
-        reg.showNotification("Tamid — Daily Tzedakah", { body: "Good morning — reminder to complete your daily donation! It goes a long way.", icon: "/icon-192.png", tag: "tamid-daily-reminder" });
-      });
-    }
-    scheduleMorningReminder();
-  }, next.getTime() - now.getTime());
+async function getFCMToken() {
+  if (!("Notification" in window) || !("serviceWorker" in navigator)) return null;
+  if (Notification.permission === "denied") return null;
+  if (Notification.permission !== "granted") {
+    const result = await Notification.requestPermission();
+    if (result !== "granted") return null;
+  }
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    return await getToken(messaging, {
+      vapidKey: import.meta.env.VITE_VAPID_KEY,
+      serviceWorkerRegistration: reg,
+    });
+  } catch (e) {
+    console.error("FCM token error:", e);
+    return null;
+  }
 }
 
 // ═══════════════════════════════════════════════
@@ -213,7 +213,11 @@ export default function TamidApp() {
   }, []);
 
   useEffect(() => {
-    if (profile) { requestNotificationPermission().then(ok => { if (ok) scheduleMorningReminder(); }); }
+    if (profile && user) {
+      getFCMToken().then(token => {
+        if (token) setDoc(doc(db, "users", user.uid), { profile: { fcmToken: token } }, { merge: true });
+      });
+    }
   }, [profile]);
 
   // ─── Firestore helpers ───
@@ -510,7 +514,15 @@ export default function TamidApp() {
             </div>
             <div style={S.setGroup}>
               <div style={S.setLabel}>Notifications</div>
-              <button onClick={async () => { const ok = await requestNotificationPermission(); alert(ok ? "Notifications enabled! You'll get a daily morning reminder." : "Notifications blocked. Enable in browser settings."); }}
+              <button onClick={async () => {
+                  const token = await getFCMToken();
+                  if (token) {
+                    await setDoc(doc(db, "users", user.uid), { profile: { fcmToken: token } }, { merge: true });
+                    alert("Notifications enabled! You'll get a daily morning reminder.");
+                  } else {
+                    alert("Notifications blocked. Please enable them in your browser settings.");
+                  }
+                }}
                 style={{ ...S.subtleBtn, fontSize: 13, padding: "10px 16px", width: "100%" }}>
                 {typeof Notification !== "undefined" && Notification.permission === "granted" ? "✓ Notifications enabled" : "Enable daily reminders"}
               </button>
