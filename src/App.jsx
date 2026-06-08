@@ -17,7 +17,11 @@ function getTodayHoliday() {
   try {
     const today = new Date();
     const events = HebrewCalendar.calendar({ start: today, end: today, candlelighting: false, sedrot: false, omer: false, noMinorFast: true, noModern: true, noRoshChodesh: true, noSpecialShabbat: true });
-    for (const ev of events) { if (ev.getFlags() & flags.MAJOR_FLAG) return { name: ev.getDesc() }; }
+    const mask = flags.CHAG | flags.MINOR_HOLIDAY | flags.CHOL_HAMOED | flags.CHANUKAH_CANDLES | flags.MAJOR_FAST;
+    const primary = events.find(ev => ev.getFlags() & mask);
+    if (primary) return { name: primary.getDesc() };
+    const erev = events.find(ev => ev.getFlags() & flags.EREV);
+    if (erev) return { name: erev.getDesc(), isErev: true };
     if (today.getDay() === 5) return { name: "Erev Shabbat" };
   } catch (e) { console.error("Hebcal error:", e); }
   return null;
@@ -34,6 +38,7 @@ function getHolidayEmoji(name) {
 
 function getHolidayNudge(name) {
   const n = name.toLowerCase();
+  if (n.startsWith("erev ") && !n.includes("shabbat")) return "Give tzedakah before chag begins tonight";
   if (n.includes("rosh hashana")) return "Start the new year with extra generosity";
   if (n.includes("yom kippur")) return "Tzedakah, Tefillah, Teshuvah — give generously before the fast";
   if (n.includes("sukkot")) return "Rejoice and share your blessings";
@@ -69,6 +74,7 @@ const CHARITIES = [
   { id: "colel", name: "Colel Chabad", category: "Elderly & Families", desc: "Israel's oldest charity — soup kitchens, elderly care, widows & orphans", venmo: "ColelChabad", website: "https://colelchabad.org/donate-2/", color: "#C8963E", region: "US / Israel" },
   { id: "chb", name: "Chabad House Bowery", category: "Community & Youth", desc: "Warm, soulful Judaism for young Jews downtown — learning, prayer & connection for college students and young professionals", venmo: "ChabadHouseBowery", website: null, color: "#2E5EA7", region: "NYC" },
   { id: "jwb", name: "Jewish Welfare Board", category: "Community & Welfare", desc: "Supporting the Jewish community of Singapore — welfare, education, and communal life", stripe: "https://donate.stripe.com/fZu4gy37paG7boj7bD2Fa00", website: "https://jwbs.org.sg", color: "#5BA8D4", region: "Singapore" },
+  { id: "ltl", name: "Larger Than Life", category: "Children & Health", desc: "Helping Israeli children with cancer and their families — dream trips, summer camps, and pediatric oncology support", venmo: "Ltlusa5415", website: "https://largerthanlifeusa.org", color: "#E0479E", region: "US / Israel" },
   // TODO: Add JWB Singapore with Stripe link once available
 ];
 const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
