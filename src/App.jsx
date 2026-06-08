@@ -324,7 +324,7 @@ export default function TamidApp() {
 
   // ═══ MAIN APP ═══
   return (
-    <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100vh", position: "relative", fontFamily: "'Space Grotesk',sans-serif", color: INK, paddingBottom: 78 }}>
+    <div style={{ maxWidth: 480, margin: "0 auto", minHeight: "100dvh", display: "flex", flexDirection: "column", position: "relative", fontFamily: "'Space Grotesk',sans-serif", color: INK, paddingBottom: "calc(86px + env(safe-area-inset-bottom))" }}>
       <Styles /><ArcadeBg />
 
       {/* Header */}
@@ -350,65 +350,71 @@ export default function TamidApp() {
         </div>
       )}
 
-      <div style={{ position: "relative", zIndex: 1, padding: "14px 16px 20px" }}>
+      <div style={{ position: "relative", zIndex: 1, padding: "14px 16px 20px", flex: 1, display: "flex", flexDirection: "column" }}>
 
         {/* ═══ PLAY / DONATE ═══ */}
         {screen === "home" && (
-          <div style={{ animation: "fadeIn .35s ease" }}>
+          <div style={{ animation: "fadeIn .35s ease", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
 
-            {/* STREAK combo → stats sheet */}
-            <div onClick={() => setSheet("streak")} style={{ ...S.box, ...S.clickable, background: PAPER, padding: 12, boxShadow: `4px 4px 0 ${BLU}`, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
-              <div>
-                <div style={{ ...S.pix, fontSize: 9, color: BLU, marginBottom: 6 }}>★ STREAK</div>
-                <div style={{ ...S.pix, fontSize: 22, color: INK }}>x{streak}</div>
-                <div style={{ ...S.pix, fontSize: 7, color: "#888", marginTop: 6 }}>▸ TAP FOR STATS</div>
+            {/* Top group: streak + quest */}
+            <div>
+              {/* STREAK combo → stats sheet */}
+              <div onClick={() => setSheet("streak")} style={{ ...S.box, ...S.clickable, background: PAPER, padding: 12, boxShadow: `4px 4px 0 ${BLU}`, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                <div>
+                  <div style={{ ...S.pix, fontSize: 9, color: BLU, marginBottom: 6 }}>★ STREAK</div>
+                  <div style={{ ...S.pix, fontSize: 22, color: INK }}>x{streak}</div>
+                  <div style={{ ...S.pix, fontSize: 7, color: "#888", marginTop: 6 }}>▸ TAP FOR STATS</div>
+                </div>
+                <span style={{ fontSize: 34, display: "inline-block", animation: "flame 1.6s ease-in-out infinite" }}>🔥</span>
               </div>
-              <div style={{ fontSize: 20, letterSpacing: 2 }}>
-                <span style={{ display: "inline-block", animation: "spin 2s infinite" }}>🪀</span>
-                <span style={{ display: "inline-block", animation: "spin 2s infinite .3s" }}>🪀</span>
-                <span style={{ display: "inline-block", animation: "spin 2s infinite .6s" }}>🪀</span>
+
+              {/* TODAY'S QUEST → charity sheet */}
+              <div onClick={() => setSheet("charity")} style={{ ...S.box, ...S.clickable, background: PAPER, padding: 12, boxShadow: `4px 4px 0 ${INK}` }}>
+                <div style={{ ...S.pix, fontSize: 8, color: RED, marginBottom: 6 }}>▶ TODAY'S QUEST</div>
+                <div style={{ fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ width: 14, height: 14, border: `2px solid ${INK}`, background: charity.color, display: "inline-block" }} />
+                  {charity.name}
+                </div>
+                <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", margin: "8px 0", padding: "0 2px" }}>
+                  <div>
+                    <div style={{ ...S.pix, fontSize: 7, color: "#888", marginBottom: 4 }}>TODAY'S GIFT</div>
+                    <div style={{ fontSize: 48, fontWeight: 800, lineHeight: 1, letterSpacing: "-.03em" }}>${curAmt}</div>
+                  </div>
+                  <div style={{ ...S.pix, fontSize: 7, lineHeight: 1.9, textAlign: "right" }}>
+                    <span style={{ color: "#888" }}>{thisYear} TOTAL</span><br />
+                    <span style={{ color: BLU, fontSize: 9 }}>${Math.round(yearTotal)}</span> · {yearDonations.length} GIFTS
+                  </div>
+                </div>
+                <div style={{ ...S.pix, fontSize: 7, color: "#888" }}>▸ TAP TO SWITCH CHARITY</div>
               </div>
             </div>
 
-            {/* TODAY'S QUEST → charity sheet */}
-            <div onClick={() => setSheet("charity")} style={{ ...S.box, ...S.clickable, background: PAPER, padding: 12, boxShadow: `4px 4px 0 ${INK}`, marginBottom: 12 }}>
-              <div style={{ ...S.pix, fontSize: 8, color: RED, marginBottom: 6 }}>▶ TODAY'S QUEST</div>
-              <div style={{ fontSize: 17, fontWeight: 700, display: "flex", alignItems: "center", gap: 8 }}>
-                <span style={{ width: 14, height: 14, border: `2px solid ${INK}`, background: charity.color, display: "inline-block" }} />
-                {charity.name}
-              </div>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", margin: "6px 0 8px", padding: "0 2px" }}>
-                <div style={{ fontSize: 50, fontWeight: 800, lineHeight: 1, letterSpacing: "-.03em" }}>${curAmt}</div>
-                <div style={{ ...S.pix, fontSize: 8, lineHeight: 1.7, textAlign: "right" }}>{yearDonations.length} GIFTS<br /><span style={{ color: BLU }}>${yearTotal} / YR</span></div>
-              </div>
-              <div style={{ ...S.pix, fontSize: 7, color: "#888" }}>▸ TAP TO SWITCH CHARITY</div>
+            {/* Bottom group: INSERT COIN / done state */}
+            <div style={{ marginTop: 20 }}>
+              {animateCoin && <div style={{ textAlign: "center", fontSize: 30, animation: "coinDrop 1s ease forwards" }}>🪙</div>}
+              {donatedToday ? (
+                <div style={{ ...S.box, background: INK, color: YEL, padding: 16, textAlign: "center", boxShadow: `5px 5px 0 ${BLU}` }}>
+                  <div style={{ ...S.pix, fontSize: 12, color: "#7CFFB0", marginBottom: 8 }}>✓ QUEST CLEARED</div>
+                  <div style={{ fontSize: 13, opacity: .85 }}>Today's tzedakah is done.</div>
+                  <button onClick={() => setSheet("amount")} style={{ ...S.brutalBtn, background: YEL, color: INK, marginTop: 14, fontSize: 11, boxShadow: `4px 4px 0 ${RED}` }}>▸ PLAY AGAIN</button>
+                </div>
+              ) : (
+                <button
+                  onPointerDown={() => setBtnPressed(true)}
+                  onPointerUp={() => { setBtnPressed(false); setSheet("amount"); }}
+                  onPointerLeave={() => setBtnPressed(false)}
+                  style={{
+                    width: "100%", background: INK, color: YEL, border: `3px solid ${INK}`, padding: 18, cursor: "pointer", textAlign: "center",
+                    boxShadow: btnPressed ? `1px 1px 0 ${RED}` : `5px 5px 0 ${RED}`,
+                    transform: btnPressed ? "translate(4px,4px)" : "translate(0,0)",
+                    transition: "all .08s",
+                  }}>
+                  <div style={{ ...S.pix, fontSize: 10, marginBottom: 6, animation: "blink 1s steps(2) infinite" }}>▸ INSERT COIN ◂</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>Give Now</div>
+                </button>
+              )}
+              <div style={{ ...S.pix, fontSize: 7, textAlign: "center", color: "#8a8061", marginTop: 14 }}>© 5786 · {hebrewDate.display.toUpperCase()}</div>
             </div>
-
-            {/* INSERT COIN / done state */}
-            {animateCoin && <div style={{ textAlign: "center", fontSize: 30, animation: "coinDrop 1s ease forwards" }}>🪙</div>}
-            {donatedToday ? (
-              <div style={{ ...S.box, background: INK, color: YEL, padding: 16, textAlign: "center", boxShadow: `5px 5px 0 ${BLU}` }}>
-                <div style={{ ...S.pix, fontSize: 12, color: "#7CFFB0", marginBottom: 8 }}>✓ QUEST CLEARED</div>
-                <div style={{ fontSize: 13, opacity: .85 }}>Today's tzedakah is done.</div>
-                <button onClick={() => setSheet("amount")} style={{ ...S.brutalBtn, background: YEL, color: INK, marginTop: 14, fontSize: 11, boxShadow: `4px 4px 0 ${RED}` }}>▸ PLAY AGAIN</button>
-              </div>
-            ) : (
-              <button
-                onPointerDown={() => setBtnPressed(true)}
-                onPointerUp={() => { setBtnPressed(false); setSheet("amount"); }}
-                onPointerLeave={() => setBtnPressed(false)}
-                style={{
-                  width: "100%", background: INK, color: YEL, border: `3px solid ${INK}`, padding: 18, cursor: "pointer", textAlign: "center",
-                  boxShadow: btnPressed ? `1px 1px 0 ${RED}` : `5px 5px 0 ${RED}`,
-                  transform: btnPressed ? "translate(4px,4px)" : "translate(0,0)",
-                  transition: "all .08s",
-                }}>
-                <div style={{ ...S.pix, fontSize: 10, marginBottom: 6, animation: "blink 1s steps(2) infinite" }}>▸ INSERT COIN ◂</div>
-                <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>Give Now</div>
-              </button>
-            )}
-
-            <div style={{ ...S.pix, fontSize: 7, textAlign: "center", color: "#8a8061", marginTop: 16 }}>© 5786 · {hebrewDate.display.toUpperCase()}</div>
           </div>
         )}
 
@@ -613,9 +619,9 @@ export default function TamidApp() {
       )}
 
       {/* Bottom nav */}
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 480, margin: "0 auto", background: INK, borderTop: `3px solid ${INK}`, display: "flex", zIndex: 50 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, maxWidth: 480, margin: "0 auto", background: INK, borderTop: `3px solid ${INK}`, display: "flex", zIndex: 50, paddingBottom: "env(safe-area-inset-bottom)" }}>
         {TABS.map(t => { const a = screen === t.id; return (
-          <button key={t.id} onClick={() => setScreen(t.id)} style={{ flex: 1, padding: "10px 0 9px", background: a ? "#1d1f25" : "transparent", border: "none", borderTop: a ? `3px solid ${YEL}` : "3px solid transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+          <button key={t.id} onClick={() => setScreen(t.id)} style={{ flex: 1, padding: "13px 0 12px", background: a ? "#1d1f25" : "transparent", border: "none", borderTop: a ? `3px solid ${YEL}` : "3px solid transparent", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
             <t.Icon color={a ? YEL : "#6b6e77"} />
             <span style={{ ...S.pix, fontSize: 7, color: a ? YEL : "#6b6e77" }}>{t.label}</span>
           </button>
@@ -681,7 +687,7 @@ function Styles() {
     @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
     @keyframes sheetUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes blink{50%{opacity:0}}
-    @keyframes spin{50%{transform:rotate(180deg) scale(1.2)}}
+    @keyframes flame{0%,100%{transform:scale(1);filter:drop-shadow(0 0 3px rgba(255,138,61,.55))}50%{transform:scale(1.22);filter:drop-shadow(0 0 11px rgba(255,138,61,.95))}}
     @keyframes coinDrop{0%{transform:translateY(-40px) scale(.5);opacity:0}50%{transform:translateY(4px) scale(1.1);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
     ::selection{background:${YEL}}
     input:focus{outline:none}
