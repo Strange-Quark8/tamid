@@ -112,6 +112,37 @@ function ArcadeBg() {
   return <div style={{ position: "fixed", inset: 0, zIndex: 0, background: BG, backgroundImage: "radial-gradient(#d9cdb4 1px, transparent 1px)", backgroundSize: "18px 18px", pointerEvents: "none" }} />;
 }
 
+// Pixel coin — matches the app icon (see scripts/generate-icons.cjs)
+const COIN_N = 21;
+const COIN_COLORS = { K: "#111", D: "#6e4e0f", G: "#ffcc2a", L: "#ffe98a", S: "#d99a1f" };
+const COIN_MAP = (() => {
+  const c = (COIN_N - 1) / 2, R = COIN_N / 2 - 0.6, rIn = R * 0.62, grid = [];
+  for (let y = 0; y < COIN_N; y++) {
+    let row = "";
+    for (let x = 0; x < COIN_N; x++) {
+      const dx = x - c, dy = y - c, d = Math.hypot(dx, dy);
+      if (d > R) { row += "."; continue; }
+      if (R - d < 1.0) { row += "K"; continue; }
+      if (Math.abs(d - rIn) < 0.55) { row += "D"; continue; }
+      if (R - d < 2.1) { if (dx < 0 && dy < 0) { row += "L"; continue; } if (dx > 0 && dy > 0) { row += "S"; continue; } }
+      row += "G";
+    }
+    grid.push(row);
+  }
+  const g = Math.round(c - R * 0.42);
+  const set = (x, y) => { const r = grid[y].split(""); if (r[x] !== "." && r[x] !== "K") { r[x] = "L"; grid[y] = r.join(""); } };
+  set(g, g); set(g + 1, g); set(g, g + 1);
+  return grid;
+})();
+function PixelCoin({ pixel = 2 }) {
+  const size = COIN_N * pixel, rects = [];
+  for (let y = 0; y < COIN_N; y++) for (let x = 0; x < COIN_N; x++) {
+    const ch = COIN_MAP[y][x]; if (ch === ".") continue;
+    rects.push(<rect key={y * COIN_N + x} x={x * pixel} y={y * pixel} width={pixel} height={pixel} fill={COIN_COLORS[ch]} />);
+  }
+  return <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} shapeRendering="crispEdges" style={{ display: "inline-block" }}>{rects}</svg>;
+}
+
 // Bottom sheet used by all three home interactions
 function Sheet({ title, onClose, children }) {
   return (
@@ -354,7 +385,7 @@ export default function TamidApp() {
 
         {/* ═══ PLAY / DONATE ═══ */}
         {screen === "home" && (
-          <div style={{ animation: "fadeIn .35s ease", flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+          <div style={{ animation: "fadeIn .35s ease", flex: 1, display: "flex", flexDirection: "column" }}>
 
             {/* Top group: streak + quest */}
             <div>
@@ -389,14 +420,15 @@ export default function TamidApp() {
               </div>
             </div>
 
-            {/* Bottom group: INSERT COIN / done state */}
-            <div style={{ marginTop: 20 }}>
-              {animateCoin && <div style={{ textAlign: "center", fontSize: 30, animation: "coinDrop 1s ease forwards" }}>🪙</div>}
+            {/* Bottom group: INSERT COIN / done state — centered in leftover space */}
+            <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", gap: 16, marginTop: 20 }}>
+              {animateCoin && <div style={{ textAlign: "center", animation: "coinDrop 1s ease forwards" }}><PixelCoin pixel={2} /></div>}
               {donatedToday ? (
-                <div style={{ ...S.box, background: INK, color: YEL, padding: 16, textAlign: "center", boxShadow: `5px 5px 0 ${BLU}` }}>
-                  <div style={{ ...S.pix, fontSize: 12, color: "#7CFFB0", marginBottom: 8 }}>✓ QUEST CLEARED</div>
-                  <div style={{ fontSize: 13, opacity: .85 }}>Today's tzedakah is done.</div>
-                  <button onClick={() => setSheet("amount")} style={{ ...S.brutalBtn, background: YEL, color: INK, marginTop: 14, fontSize: 11, boxShadow: `4px 4px 0 ${RED}` }}>▸ PLAY AGAIN</button>
+                <div style={{ ...S.box, background: INK, color: YEL, padding: "28px 20px", textAlign: "center", boxShadow: `6px 6px 0 ${BLU}` }}>
+                  <div style={{ marginBottom: 10 }}><PixelCoin pixel={3} /></div>
+                  <div style={{ ...S.pix, fontSize: 14, color: "#7CFFB0", marginBottom: 10 }}>✓ QUEST CLEARED</div>
+                  <div style={{ fontSize: 14, opacity: .85 }}>Today's tzedakah is done.</div>
+                  <button onClick={() => setSheet("amount")} style={{ ...S.brutalBtn, background: YEL, color: INK, marginTop: 18, fontSize: 11, boxShadow: `4px 4px 0 ${RED}` }}>▸ PLAY AGAIN</button>
                 </div>
               ) : (
                 <button
@@ -404,16 +436,16 @@ export default function TamidApp() {
                   onPointerUp={() => { setBtnPressed(false); setSheet("amount"); }}
                   onPointerLeave={() => setBtnPressed(false)}
                   style={{
-                    width: "100%", background: INK, color: YEL, border: `3px solid ${INK}`, padding: 18, cursor: "pointer", textAlign: "center",
-                    boxShadow: btnPressed ? `1px 1px 0 ${RED}` : `5px 5px 0 ${RED}`,
-                    transform: btnPressed ? "translate(4px,4px)" : "translate(0,0)",
+                    width: "100%", background: INK, color: YEL, border: `3px solid ${INK}`, padding: "26px 18px", cursor: "pointer", textAlign: "center",
+                    boxShadow: btnPressed ? `1px 1px 0 ${RED}` : `6px 6px 0 ${RED}`,
+                    transform: btnPressed ? "translate(5px,5px)" : "translate(0,0)",
                     transition: "all .08s",
                   }}>
-                  <div style={{ ...S.pix, fontSize: 10, marginBottom: 6, animation: "blink 1s steps(2) infinite" }}>▸ INSERT COIN ◂</div>
-                  <div style={{ fontSize: 16, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>Give Now</div>
+                  <div style={{ ...S.pix, fontSize: 11, marginBottom: 10, animation: "blink 1s steps(2) infinite" }}>▸ INSERT COIN ◂</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>Give Now</div>
                 </button>
               )}
-              <div style={{ ...S.pix, fontSize: 7, textAlign: "center", color: "#8a8061", marginTop: 14 }}>© 5786 · {hebrewDate.display.toUpperCase()}</div>
+              <div style={{ ...S.pix, fontSize: 7, textAlign: "center", color: "#8a8061" }}>© 5786 · {hebrewDate.display.toUpperCase()}</div>
             </div>
           </div>
         )}
@@ -606,7 +638,7 @@ export default function TamidApp() {
       {showConfirm && (
         <div style={S.modalOverlay}>
           <div style={{ ...S.box, background: BG, padding: 22, maxWidth: 320, width: "90%", textAlign: "center", boxShadow: `6px 6px 0 ${INK}` }}>
-            <div style={{ fontSize: 30, marginBottom: 10 }}>🪙</div>
+            <div style={{ marginBottom: 10 }}><PixelCoin pixel={2} /></div>
             <div style={{ ...S.pix, fontSize: 11, lineHeight: 1.5 }}>DID YOU COMPLETE<br />YOUR DONATION?</div>
             <div style={{ fontSize: 13, color: "#5c5443", marginTop: 10 }}>${pending?.amount} to {pending?.charity}</div>
             <div style={{ fontSize: 13, color: "#5c5443", fontStyle: "italic", marginTop: 12, lineHeight: 1.5 }}>"{quote.text}"</div>
