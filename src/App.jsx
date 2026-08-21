@@ -75,7 +75,7 @@ const CHARITIES = [
   { id: "chb", name: "Chabad House Bowery", category: "Community & Youth", desc: "Warm, soulful Judaism for young Jews downtown — learning, prayer & connection for college students and young professionals", venmo: "ChabadHouseBowery", website: null, color: "#2E5EA7", region: "NYC" },
   { id: "jwb", name: "Jewish Welfare Board", category: "Community & Welfare", desc: "Supporting the Jewish community of Singapore — welfare, education, and communal life", stripe: "https://donate.stripe.com/fZu4gy37paG7boj7bD2Fa00", website: "https://jwbs.org.sg", color: "#5BA8D4", region: "Singapore" },
   { id: "ltl", name: "Larger Than Life", category: "Children & Health", desc: "Helping Israeli children with cancer and their families — dream trips, summer camps, and pediatric oncology support", venmo: "Ltlusa5415", website: "https://largerthanlifeusa.org", color: "#4E9A6B", region: "US / Israel" },
-  { id: "cwv", name: "Chabad of the West Village", category: "Community & Youth", desc: "Downtown Manhattan Chabad — Shabbat meals, learning, and a Jewish home in the West Village", venmo: "ChabadWV", website: null, color: "#F2A9BE", region: "NYC" },
+  { id: "cwv", name: "Chabad of the West Village", category: "Community & Youth", desc: "Downtown Manhattan Chabad — Shabbat meals, learning, and a Jewish home in the West Village", venmo: "ChabadWV", venmoCharity: true, website: null, color: "#F2A9BE", region: "NYC" },
   { id: "inperson", name: "In-Person Tzedakah", category: "Given by hand", desc: "Cash in a pushka, a coin to someone who asked, a shul tzedakah box — record a gift you gave physically", inPerson: true, website: null, color: "#7A5CFF", region: "Anywhere" },
 ];
 const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
@@ -285,7 +285,9 @@ export default function TamidApp() {
     if (!curAmt || curAmt <= 0) return;
     if (!charity.inPerson) {
       const note = profile?.name ? `Daily Tzedakah ${profile.name}: Tamid app` : "Daily Tzedakah: Tamid app";
-      const url = charity.venmo
+      const url = charity.venmoCharity
+        ? `https://venmo.com/${charity.venmo}` // verified charity profiles reject txn=pay; use their Donate flow
+        : charity.venmo
         ? `https://venmo.com/${charity.venmo}?txn=pay&amount=${curAmt}&note=${encodeURIComponent(note)}`
         : charity.stripe
         ? `${charity.stripe}?prefilled_amount=${Math.round(curAmt * 100)}`
@@ -621,7 +623,7 @@ export default function TamidApp() {
                   <span style={{ ...S.pix, fontSize: 9, color: sel ? BLU : "#bbb" }}>{sel ? "◉ ACTIVE" : "○"}</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#666", marginTop: 6, lineHeight: 1.4 }}>{c.desc}</div>
-                <div style={{ ...S.pix, fontSize: 7, color: "#999", marginTop: 6 }}>▸ {c.region.toUpperCase()} · {c.inPerson ? "BY HAND" : c.venmo ? "VENMO" : c.stripe ? "STRIPE" : "WEB"}</div>
+                <div style={{ ...S.pix, fontSize: 7, color: "#999", marginTop: 6 }}>▸ {c.region.toUpperCase()} · {c.inPerson ? "BY HAND" : c.venmoCharity ? "VENMO DONATE" : c.venmo ? "VENMO" : c.stripe ? "STRIPE" : "WEB"}</div>
               </div>
             );
           })}
@@ -647,6 +649,11 @@ export default function TamidApp() {
             <div style={{ marginTop: 10, ...S.box, background: PAPER, padding: 10, display: "flex", alignItems: "center", gap: 8, boxShadow: `3px 3px 0 ${INK}` }}>
               <span style={{ fontSize: 22, fontWeight: 800 }}>$</span>
               <input type="number" min="0.5" step="0.5" value={customAmt} onChange={e => setCustomAmt(e.target.value)} placeholder="enter amount" autoFocus style={{ flex: 1, border: "none", outline: "none", fontSize: 20, fontWeight: 800, fontFamily: "'Space Grotesk',sans-serif", background: "transparent", color: INK }} />
+            </div>
+          )}
+          {charity.venmoCharity && (
+            <div style={{ ...S.box, background: YEL, padding: "10px 12px", marginTop: 12, boxShadow: `3px 3px 0 ${INK}` }}>
+              <div style={{ ...S.pix, fontSize: 7, lineHeight: 1.7 }}>! VENMO WON'T PREFILL FOR<br />THIS CHARITY — TAP DONATE<br />AND ENTER ${curAmt} YOURSELF</div>
             </div>
           )}
           <button onClick={() => { if (curAmt > 0) { setSheet(null); handleDonate(); } }}
