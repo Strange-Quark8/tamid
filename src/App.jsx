@@ -74,7 +74,9 @@ const CHARITIES = [
   { id: "colel", name: "Colel Chabad", category: "Elderly & Families", desc: "Israel's oldest charity — soup kitchens, elderly care, widows & orphans", venmo: "ColelChabad", website: "https://colelchabad.org/donate-2/", color: "#C8963E", region: "US / Israel" },
   { id: "chb", name: "Chabad House Bowery", category: "Community & Youth", desc: "Warm, soulful Judaism for young Jews downtown — learning, prayer & connection for college students and young professionals", venmo: "ChabadHouseBowery", website: null, color: "#2E5EA7", region: "NYC" },
   { id: "jwb", name: "Jewish Welfare Board", category: "Community & Welfare", desc: "Supporting the Jewish community of Singapore — welfare, education, and communal life", stripe: "https://donate.stripe.com/fZu4gy37paG7boj7bD2Fa00", website: "https://jwbs.org.sg", color: "#5BA8D4", region: "Singapore" },
-  { id: "ltl", name: "Larger Than Life", category: "Children & Health", desc: "Helping Israeli children with cancer and their families — dream trips, summer camps, and pediatric oncology support", venmo: "Ltlusa5415", website: "https://largerthanlifeusa.org", color: "#E0479E", region: "US / Israel" },
+  { id: "ltl", name: "Larger Than Life", category: "Children & Health", desc: "Helping Israeli children with cancer and their families — dream trips, summer camps, and pediatric oncology support", venmo: "Ltlusa5415", website: "https://largerthanlifeusa.org", color: "#4E9A6B", region: "US / Israel" },
+  { id: "cwv", name: "Chabad of the West Village", category: "Community & Youth", desc: "Downtown Manhattan Chabad — Shabbat meals, learning, and a Jewish home in the West Village", venmo: "ChabadWV", website: null, color: "#F2A9BE", region: "NYC" },
+  { id: "inperson", name: "In-Person Tzedakah", category: "Given by hand", desc: "Cash in a pushka, a coin to someone who asked, a shul tzedakah box — record a gift you gave physically", inPerson: true, website: null, color: "#7A5CFF", region: "Anywhere" },
 ];
 const PRESET_AMOUNTS = [1, 2, 3, 5, 10, 18, 36];
 
@@ -187,6 +189,7 @@ export default function TamidApp() {
   const [addYahrzeit, setAddYahrzeit] = useState(false);
   const [yForm, setYForm] = useState({ name: "", month: "", day: "" });
   const [onboardData, setOnboardData] = useState({ name: "", charity: "colel" });
+  const [pastForm, setPastForm] = useState(null); // { date, charityId, amount }
 
   // ─── Auth + data loading ───
   useEffect(() => {
@@ -231,7 +234,7 @@ export default function TamidApp() {
   };
   const addDonation = async (don) => {
     setDonations(prev => [...prev, don]);
-    setDonatedToday(true);
+    if (new Date(don.date).toDateString() === new Date().toDateString()) setDonatedToday(true);
     if (user) {
       try { await updateDoc(doc(db, "users", user.uid), { donations: arrayUnion(don) }); }
       catch (e) {
@@ -258,6 +261,7 @@ export default function TamidApp() {
   const yearDonations = donations.filter(d => new Date(d.date).getFullYear() === thisYear);
   const yearTotal = yearDonations.reduce((s, d) => s + d.amount, 0);
   const totalAllTime = donations.reduce((s, d) => s + d.amount, 0);
+  const sortedDonations = [...donations].sort((a, b) => new Date(b.date) - new Date(a.date));
   const isRestDay = (date) => {
     if (date.getDay() === 6) return true; // Shabbat
     const evts = HebrewCalendar.calendar({ start: date, end: date, sedrot: false, omer: false });
@@ -279,14 +283,30 @@ export default function TamidApp() {
 
   const handleDonate = () => {
     if (!curAmt || curAmt <= 0) return;
-    const url = charity.venmo
-      ? `https://venmo.com/${charity.venmo}?txn=pay&amount=${curAmt}&note=${encodeURIComponent("Daily Tzedakah - Tamid")}`
-      : charity.stripe
-      ? `${charity.stripe}?prefilled_amount=${Math.round(curAmt * 100)}`
-      : charity.website;
-    if (url) window.open(url, "_blank");
+    if (!charity.inPerson) {
+      const note = profile?.name ? `Daily Tzedakah ${profile.name}: Tamid app` : "Daily Tzedakah: Tamid app";
+      const url = charity.venmo
+        ? `https://venmo.com/${charity.venmo}?txn=pay&amount=${curAmt}&note=${encodeURIComponent(note)}`
+        : charity.stripe
+        ? `${charity.stripe}?prefilled_amount=${Math.round(curAmt * 100)}`
+        : charity.website;
+      if (url) window.open(url, "_blank");
+    }
     setPending({ charity: charity.name, charityId: charity.id, amount: curAmt, date: new Date().toISOString() });
     setShowConfirm(true);
+  };
+
+  // ─── Log a gift given outside the app (in person, cheque, or a day you forgot) ───
+  const todayISO = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const openPastForm = () => { setPastForm({ date: todayISO(), charityId: charity.id, amount: String(profile?.amount || 1) }); setSheet("past"); };
+  const savePastGift = async () => {
+    const amt = parseFloat(pastForm.amount);
+    if (!amt || amt <= 0 || !pastForm.date) return;
+    const [y, m, dd] = pastForm.date.split("-").map(Number);
+    const when = new Date(y, m - 1, dd, 12, 0, 0); // noon local, so re-parsing never shifts the day
+    const c = cById(pastForm.charityId);
+    await addDonation({ charity: c.name, charityId: c.id, amount: amt, date: when.toISOString(), loggedLate: true });
+    setSheet(null); setPastForm(null);
   };
 
   const confirmDonation = async () => {
@@ -442,7 +462,7 @@ export default function TamidApp() {
                     transition: "all .08s",
                   }}>
                   <div style={{ ...S.pix, fontSize: 11, marginBottom: 10, animation: "blink 1s steps(2) infinite" }}>▸ INSERT COIN ◂</div>
-                  <div style={{ fontSize: 20, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>Give Now</div>
+                  <div style={{ fontSize: 20, fontWeight: 800, textTransform: "uppercase", letterSpacing: ".05em" }}>{charity.inPerson ? "Log It" : "Give Now"}</div>
                 </button>
               )}
               <div style={{ ...S.pix, fontSize: 7, textAlign: "center", color: "#8a8061" }}>© 5786 · {hebrewDate.display.toUpperCase()}</div>
@@ -453,7 +473,10 @@ export default function TamidApp() {
         {/* ═══ LOG / HISTORY ═══ */}
         {screen === "history" && (
           <div style={{ animation: "fadeIn .35s ease" }}>
-            <div style={{ ...S.pix, fontSize: 12, marginBottom: 14 }}>▸ PLAY LOG</div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+              <div style={{ ...S.pix, fontSize: 12 }}>▸ PLAY LOG</div>
+              <button onClick={openPastForm} style={{ ...S.brutalBtn, background: YEL, color: INK, fontSize: 8, padding: "9px 11px", boxShadow: `3px 3px 0 ${INK}` }}>+ LOG PAST</button>
+            </div>
             {donations.length === 0 ? (
               <div style={{ ...S.box, background: PAPER, padding: 30, textAlign: "center", boxShadow: `4px 4px 0 ${INK}` }}>
                 <div style={{ fontSize: 30, marginBottom: 10 }}>📭</div>
@@ -461,7 +484,7 @@ export default function TamidApp() {
               </div>
             ) : (
               <div style={{ ...S.box, background: PAPER, boxShadow: `4px 4px 0 ${INK}` }}>
-                {[...donations].reverse().slice(0, 50).map((d, i, arr) => {
+                {sortedDonations.slice(0, 50).map((d, i, arr) => {
                   const dt = new Date(d.date); const ch = cById(d.charityId);
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: i < arr.length - 1 ? "2px solid #ece3d0" : "none" }}>
@@ -570,7 +593,7 @@ export default function TamidApp() {
             ? <div style={{ ...S.box, background: PAPER, padding: 18, ...S.pix, fontSize: 8, color: "#888", textAlign: "center", boxShadow: `4px 4px 0 ${INK}` }}>NO PLAYS YET</div>
             : (
               <div style={{ ...S.box, background: PAPER, boxShadow: `4px 4px 0 ${INK}` }}>
-                {[...donations].reverse().slice(0, 30).map((d, i, arr) => {
+                {sortedDonations.slice(0, 30).map((d, i, arr) => {
                   const ch = cById(d.charityId);
                   return (
                     <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 10px", borderBottom: i < arr.length - 1 ? "2px solid #ece3d0" : "none" }}>
@@ -598,7 +621,7 @@ export default function TamidApp() {
                   <span style={{ ...S.pix, fontSize: 9, color: sel ? BLU : "#bbb" }}>{sel ? "◉ ACTIVE" : "○"}</span>
                 </div>
                 <div style={{ fontSize: 11, color: "#666", marginTop: 6, lineHeight: 1.4 }}>{c.desc}</div>
-                <div style={{ ...S.pix, fontSize: 7, color: "#999", marginTop: 6 }}>▸ {c.region.toUpperCase()} · {c.venmo ? "VENMO" : c.stripe ? "STRIPE" : "WEB"}</div>
+                <div style={{ ...S.pix, fontSize: 7, color: "#999", marginTop: 6 }}>▸ {c.region.toUpperCase()} · {c.inPerson ? "BY HAND" : c.venmo ? "VENMO" : c.stripe ? "STRIPE" : "WEB"}</div>
               </div>
             );
           })}
@@ -629,7 +652,37 @@ export default function TamidApp() {
           <button onClick={() => { if (curAmt > 0) { setSheet(null); handleDonate(); } }}
             style={{ ...S.brutalBtn, width: "100%", background: INK, color: YEL, marginTop: 14, boxShadow: `5px 5px 0 ${RED}` }}>
             <div style={{ ...S.pix, fontSize: 8, marginBottom: 5 }}>▸ TODAY'S COIN ◂</div>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>GIVE ${curAmt} →</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>{charity.inPerson ? `LOG $${curAmt} GIVEN` : `GIVE $${curAmt}`} →</div>
+          </button>
+        </Sheet>
+      )}
+
+      {sheet === "past" && pastForm && (
+        <Sheet title="✎ LOG A PAST GIFT" onClose={() => { setSheet(null); setPastForm(null); }}>
+          <div style={{ fontSize: 12, color: "#5c5443", lineHeight: 1.5 }}>Gave outside the app — in person, by cheque, or on a day you forgot to tap? Record it here so it counts.</div>
+          <div style={S.sectionLabel}>▸ WHEN</div>
+          <input type="date" max={todayISO()} value={pastForm.date} onChange={e => setPastForm(f => ({ ...f, date: e.target.value }))} style={S.input} />
+          <div style={S.sectionLabel}>▸ WHO</div>
+          <select value={pastForm.charityId} onChange={e => setPastForm(f => ({ ...f, charityId: e.target.value }))} style={{ ...S.input, cursor: "pointer" }}>
+            {CHARITIES.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </select>
+          <div style={S.sectionLabel}>▸ HOW MUCH</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 8, marginBottom: 10 }}>
+            {PRESET_AMOUNTS.map(a => {
+              const sel = parseFloat(pastForm.amount) === a;
+              return <div key={a} onClick={() => setPastForm(f => ({ ...f, amount: String(a) }))}
+                style={{ ...S.box, ...S.clickable, padding: "12px 0", textAlign: "center", fontWeight: 800, fontSize: 15, background: sel ? YEL : PAPER, boxShadow: sel ? `3px 3px 0 ${RED}` : `3px 3px 0 ${INK}` }}>${a}</div>;
+            })}
+          </div>
+          <div style={{ ...S.box, background: PAPER, padding: 10, display: "flex", alignItems: "center", gap: 8, boxShadow: `3px 3px 0 ${INK}` }}>
+            <span style={{ fontSize: 22, fontWeight: 800 }}>$</span>
+            <input type="number" min="0.5" step="0.5" value={pastForm.amount} onChange={e => setPastForm(f => ({ ...f, amount: e.target.value }))} placeholder="amount"
+              style={{ flex: 1, border: "none", outline: "none", fontSize: 20, fontWeight: 800, fontFamily: "'Space Grotesk',sans-serif", background: "transparent", color: INK }} />
+          </div>
+          <button onClick={savePastGift} disabled={!(parseFloat(pastForm.amount) > 0)}
+            style={{ ...S.brutalBtn, width: "100%", background: INK, color: YEL, marginTop: 14, boxShadow: `5px 5px 0 ${BLU}`, opacity: parseFloat(pastForm.amount) > 0 ? 1 : .4 }}>
+            <div style={{ ...S.pix, fontSize: 8, marginBottom: 5 }}>▸ ADD TO LOG ◂</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>RECORD ${parseFloat(pastForm.amount) > 0 ? parseFloat(pastForm.amount) : 0} →</div>
           </button>
         </Sheet>
       )}
@@ -639,7 +692,7 @@ export default function TamidApp() {
         <div style={S.modalOverlay}>
           <div style={{ ...S.box, background: BG, padding: 22, maxWidth: 320, width: "90%", textAlign: "center", boxShadow: `6px 6px 0 ${INK}` }}>
             <div style={{ marginBottom: 10 }}><PixelCoin pixel={2} /></div>
-            <div style={{ ...S.pix, fontSize: 11, lineHeight: 1.5 }}>DID YOU COMPLETE<br />YOUR DONATION?</div>
+            <div style={{ ...S.pix, fontSize: 11, lineHeight: 1.5 }}>{cById(pending?.charityId).inPerson ? <>LOG THIS GIFT<br />AS GIVEN?</> : <>DID YOU COMPLETE<br />YOUR DONATION?</>}</div>
             <div style={{ fontSize: 13, color: "#5c5443", marginTop: 10 }}>${pending?.amount} to {pending?.charity}</div>
             <div style={{ fontSize: 13, color: "#5c5443", fontStyle: "italic", marginTop: 12, lineHeight: 1.5 }}>"{quote.text}"</div>
             <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
